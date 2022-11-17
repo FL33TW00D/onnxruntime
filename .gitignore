@@ -56,3 +56,4 @@ onnxruntime/python/version_info.py
 .envrc
 .psenvrc
 *.csproj.user
+**/cache_models

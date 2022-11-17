@@ -26,6 +26,7 @@ from optimizer import optimize_model
 logger = logging.getLogger(__name__)
 
 PRETRAINED_T5_MODELS = ["t5-small", "t5-base", "t5-large", "t5-3b", "t5-11b"]
+PRETRAINED_FLAN_T5_MODELS = ["google/flan-t5-small", "google/flan-t5-base", "google/flan-t5-large", "google/flan-t5-xl", "google/flan-t5-xxl"]
 PRETRAINED_MT5_MODELS = ["google/mt5-small", "google/mt5-base", "google/mt5-large", "google/mt5-xl", "google/mt5-xxl"]
 
 
@@ -78,7 +79,7 @@ class T5Helper:
         Returns:
             Dict[str, torch.nn.Module]: mapping from name to modules for ONNX conversion.
         """
-        if model_type == "t5":
+        if model_type == "t5" or model_type == "flan-t5":
             model = T5ForConditionalGeneration.from_pretrained(model_name_or_path, cache_dir=cache_dir)
         elif model_type == "mt5":
             model = MT5ForConditionalGeneration.from_pretrained(model_name_or_path, cache_dir=cache_dir)
