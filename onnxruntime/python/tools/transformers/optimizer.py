@@ -30,12 +30,14 @@ from onnx_model_bert import BertOnnxModel
 from onnx_model_bert_keras import BertOnnxModelKeras
 from onnx_model_bert_tf import BertOnnxModelTF
 from onnx_model_gpt2 import Gpt2OnnxModel
+from onnx_model_t5 import T5OnnxModel
 from onnx_model_tnlr import TnlrOnnxModel
 
 logger = logging.getLogger(__name__)
 
 # Map model type to tuple: optimizer class, export tools (pytorch, tf2onnx, keras2onnx), and default opt_level
 MODEL_TYPES = {
+    "t5": (T5OnnxModel, "pytorch", 1),
     "bart": (BartOnnxModel, "pytorch", 1),
     "bert": (BertOnnxModel, "pytorch", 1),
     "bert_tf": (BertOnnxModelTF, "tf2onnx", 0),
@@ -211,6 +213,7 @@ def optimize_model(
     """
     assert opt_level is None or opt_level in [0, 1, 2, 99]
 
+    print(f"Optimizing model: {model_type}")
     if model_type != "bert" and (num_heads == 0 or hidden_size == 0):
         logger.warning("Please specify parameters of num_heads and hidden_size when model_type is not 'bert'")
 

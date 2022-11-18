@@ -10,6 +10,8 @@ from fusion_attention import AttentionMask, FusionAttention
 from fusion_biasgelu import FusionBiasGelu
 from fusion_embedlayer import FusionEmbedLayerNormalization
 from fusion_fastgelu import FusionFastGelu
+from fusion_fusedrmsnorm import FusionRMSNorm
+import fusion_fusedrmsnorm
 from fusion_gelu import FusionGelu
 from fusion_gelu_approximation import FusionGeluApproximation
 from fusion_gemmfastgelu import FusionGemmFastGelu
@@ -46,7 +48,7 @@ class BertOnnxModel(OnnxModel):
             num_heads (int, optional): number of attention heads. Defaults to 0 (detect the parameter automatically).
             hidden_size (int, optional): hidden dimension. Defaults to 0 (detect the parameter automatically).
         """
-        assert (num_heads == 0 and hidden_size == 0) or (num_heads > 0 and hidden_size % num_heads == 0)
+        #assert (num_heads == 0 and hidden_size == 0) or (num_heads > 0 and hidden_size % num_heads == 0)
 
         super().__init__(model)
         self.num_heads = num_heads
@@ -106,6 +108,10 @@ class BertOnnxModel(OnnxModel):
         fusion.apply()
 
         fusion = FusionLayerNormalizationTF(self)
+        fusion.apply()
+
+        # Only relevant for T5
+        fusion = FusionRMSNorm(self)
         fusion.apply()
 
         # Only relevant in models with Q-DQ nodes
