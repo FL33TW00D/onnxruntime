@@ -233,7 +233,7 @@ class T5Helper:
         """Optimize ONNX model with an option to convert it to use mixed precision."""
         m = optimize_model(
             onnx_model_path,
-            model_type="t5",  # TODO: support optimization for t5
+            model_type="bert",  # TODO: support optimization for t5
             num_heads=num_attention_heads,
             hidden_size=hidden_size,
             opt_level=0,
