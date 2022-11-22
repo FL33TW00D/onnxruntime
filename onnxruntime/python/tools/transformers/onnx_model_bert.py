@@ -111,8 +111,8 @@ class BertOnnxModel(OnnxModel):
         fusion.apply()
 
         # Only relevant for T5
-        fusion = FusionRMSNorm(self)
-        fusion.apply()
+        #fusion = FusionRMSNorm(self)
+        #fusion.apply()
 
         # Only relevant in models with Q-DQ nodes
         fusion = FusionQOrderedLayerNormalization(self)
