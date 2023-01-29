@@ -15,6 +15,7 @@ namespace onnxruntime {
 namespace contrib {
 namespace cuda {
 
+#define PastSequenceLength 8
 #define REGISTER_KERNEL_TYPED(T)                                  \
   ONNX_OPERATOR_TYPED_KERNEL_EX(                                  \
       Attention,                                                  \
@@ -23,7 +24,10 @@ namespace cuda {
       T,                                                          \
       kCudaExecutionProvider,                                     \
       (*KernelDefBuilder::Create())                               \
-          .TypeConstraint("T", DataTypeImpl::GetTensorType<T>()), \
+          .MayInplace(4, 1)                                       \
+          .TypeConstraint("T", DataTypeImpl::GetTensorType<T>())  \
+          .InputMemoryType(OrtMemTypeCPUInput, PastSequenceLength)\
+      ,                                                           \
       Attention<T>);
 
 REGISTER_KERNEL_TYPED(float)
@@ -43,8 +47,8 @@ static inline bool HasFusedFp16Kernel(int sm, int head_size, int sequence_length
 
   // For sequence length 512, SM86 could fall back to SM80.
   // In our test, T4 GPU has no enough shared memory to load fmha_v2_fp16_512_64_sm75_kernel so we removed it.
-  if (!(sequence_length == 64 || sequence_length == 128 || sequence_length == 192 ||
-        sequence_length == 256 || sequence_length == 384 || (sequence_length == 512 && sm >= kSM_80))) {
+  const int max_sequence_length = (sm >= kSM_80 ? 512 : 384);
+  if (sequence_length > max_sequence_length) {
     return false;
   }
 
@@ -66,6 +70,7 @@ Status Attention<T>::ComputeInternal(OpKernelContext* context) const {
   const Tensor* extra_add_qk = context->Input<Tensor>(5);
   const Tensor* key = context->Input<Tensor>(6);
   const Tensor* value = context->Input<Tensor>(7);
+  const Tensor* past_seq_len = context->Input<Tensor>(8);
 
   auto& device_prop = GetDeviceProp();
   AttentionParameters parameters;
@@ -78,7 +83,8 @@ Status Attention<T>::ComputeInternal(OpKernelContext* context) const {
                                   key,
                                   value,
                                   &parameters,
-                                  device_prop.maxThreadsPerBlock));
+                                  device_prop.maxThreadsPerBlock,
+                                  past_seq_len));
 
   int batch_size = parameters.batch_size;
   int sequence_length = parameters.sequence_length;
@@ -89,8 +95,10 @@ Status Attention<T>::ComputeInternal(OpKernelContext* context) const {
   output_shape[2] = static_cast<int64_t>(parameters.v_hidden_size);
   Tensor* output = context->Output(0, output_shape);
 
-  std::vector<int64_t> present_dims{2, parameters.batch_size, parameters.num_heads,
-                                    parameters.total_sequence_length, parameters.head_size};
+  std::vector<int64_t> present_dims{
+    2, parameters.batch_size, parameters.num_heads,
+    past_present_share_buffer_ ? parameters.max_sequence_length : parameters.total_sequence_length,
+    parameters.head_size};
   TensorShape present_shape(present_dims);
   Tensor* present = context->Output(1, present_shape);
 
@@ -111,23 +119,25 @@ Status Attention<T>::ComputeInternal(OpKernelContext* context) const {
     if (nullptr == fused_fp16_runner_.get()) {
       fused_fp16_runner_.reset(new FusedMHARunnerFP16v2(num_heads_, parameters.head_size, sm));
     }
+
     // In case some kernel not loaded due to shared memory limit, we need to double check here.
-    if (fused_fp16_runner_->isValid(sequence_length)) {
+    const int S = fused_fp16_runner_->getSFromMaxSeqLen(sequence_length);
+    if (fused_fp16_runner_->isValid(S)) {
       fused_runner = fused_fp16_runner_.get();
     }
   }
 
-  cublasHandle_t cublas = CublasHandle();
+  cublasHandle_t cublas = GetCublasHandle(context);
   constexpr size_t element_size = sizeof(T);
 
-  IAllocatorUniquePtr<T> gemm_buffer;
+  IAllocatorUniquePtr<void> gemm_buffer;
   if (weights != nullptr) {
     // Use GEMM for fully connection.
     int m = batch_size * sequence_length;
     int n = (parameters.hidden_size + parameters.hidden_size + parameters.v_hidden_size);
     int k = parameters.input_hidden_size;
     size_t gemm_buffer_size = static_cast<size_t>(batch_size) * sequence_length * n * element_size;
-    gemm_buffer = GetScratchBuffer<T>(gemm_buffer_size);
+    gemm_buffer = GetScratchBuffer<void>(gemm_buffer_size, context->GetComputeStream());
 
     typedef typename ToCudaType<T>::MappedType CudaT;
     CudaT one = ToCudaType<T>::FromFloat(1.0f);
@@ -151,7 +161,7 @@ Status Attention<T>::ComputeInternal(OpKernelContext* context) const {
                                                    parameters.total_sequence_length,
                                                    fused_runner);
 
-  auto work_space = GetScratchBuffer<void>(workSpaceSize);
+  auto work_space = GetScratchBuffer<void>(workSpaceSize, context->GetComputeStream());
 
   typedef typename ToCudaType<T>::MappedType CudaT;
   AttentionData<CudaT> data;
@@ -168,7 +178,8 @@ Status Attention<T>::ComputeInternal(OpKernelContext* context) const {
   data.output = reinterpret_cast<CudaT*>(output->MutableData<T>());
   data.present = (nullptr == present) ? nullptr : reinterpret_cast<CudaT*>(present->MutableData<T>());
 
-  return QkvToContext<CudaT>(device_prop, cublas, Stream(), parameters, data, reinterpret_cast<void*>(fused_runner));
+  return QkvToContext<CudaT>(
+    device_prop, cublas, Stream(context), parameters, data, reinterpret_cast<void*>(fused_runner), past_present_share_buffer_);
 }
 
 }  // namespace cuda
