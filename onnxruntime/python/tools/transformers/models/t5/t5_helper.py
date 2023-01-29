@@ -28,7 +28,6 @@ logger = logging.getLogger(__name__)
 PRETRAINED_T5_MODELS = ["t5-small", "t5-base", "t5-large", "t5-3b", "t5-11b"]
 PRETRAINED_MT5_MODELS = ["google/mt5-small", "google/mt5-base", "google/mt5-large", "google/mt5-xl", "google/mt5-xxl"]
 
-
 class T5Helper:
     @staticmethod
     def get_onnx_path(
