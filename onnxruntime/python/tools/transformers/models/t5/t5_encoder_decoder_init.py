@@ -123,6 +123,7 @@ class T5EncoderDecoderInitHelper:
             device=device,
             use_int32_inputs=use_int32_inputs,
         )
+        print("EncoderDecoderInit inputs: {}".format(inputs.to_list()))
         input_list = inputs.to_list()
 
         present_names = PastKeyValuesHelper.get_past_names(model.config.num_layers, present=True)

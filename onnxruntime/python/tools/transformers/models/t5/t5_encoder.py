@@ -60,6 +60,7 @@ class T5EncoderInputs:
         """
         dtype = torch.int32 if use_int32_inputs else torch.int64
 
+        """
         input_ids = torch.randint(
             low=0,
             high=vocab_size - 1,
@@ -67,6 +68,10 @@ class T5EncoderInputs:
             dtype=dtype,
             device=device,
         )
+        """
+
+        #translate English to German: Let's go to that local techno disco - 16 tokens
+        input_ids = torch.from_numpy(numpy.array([13959, 1566, 12, 2968, 10, 1563, 31, 7, 281, 12, 24, 415, 25389, 5025, 32, 1], dtype=numpy.int32))
 
         attention_mask = torch.ones([batch_size, sequence_length], dtype=dtype, device=device)
         if sequence_length >= 2:
