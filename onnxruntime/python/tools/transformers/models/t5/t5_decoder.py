@@ -11,6 +11,7 @@ import tempfile
 from pathlib import Path
 from typing import List, Union
 
+import numpy as np
 import numpy
 import onnx
 import torch
@@ -163,13 +164,10 @@ class T5DecoderInputs:
         head_size: int = config.d_kv
 
         sequence_length: int = 1  # fixed for decoding
-        decoder_input_ids = torch.randint(
-            low=0,
-            high=vocab_size - 1,
-            size=(batch_size, sequence_length),
-            dtype=(torch.int32 if use_int32_inputs else torch.int64),
-            device=device,
-        )
+
+        decoder_input_ids = torch.from_numpy(
+            np.array([1185])
+        ).reshape(1,1).to(device)
 
         encoder_inputs = T5EncoderInputs.create_dummy(
             batch_size,
@@ -180,34 +178,20 @@ class T5DecoderInputs:
         )
 
         float_type = torch.float16 if float16 else torch.float32
-        encoder_hidden_state = torch.rand(
-            batch_size,
-            encode_sequence_length,
-            hidden_size,
-            dtype=float_type,
-            device=device,
-        )
+        encoder_hidden_states_np = np.load("encdecinit/encoder_hidden_states.npy")
+        encoder_hidden_state = torch.from_numpy(encoder_hidden_states_np).to(device) 
 
         if past_decode_sequence_length > 0:
-            self_attention_past_shape = [
-                batch_size,
-                num_attention_heads,
-                past_decode_sequence_length,
-                head_size,
-            ]
-            cross_attention_past_shape = [
-                batch_size,
-                num_attention_heads,
-                encode_sequence_length,
-                head_size,
-            ]
-
             past = []
-            for _ in range(2 * num_layers):
-                past.append(torch.rand(self_attention_past_shape, dtype=float_type, device=device))
+            attn_type = ["self", "cross"]
+            matrix = ["key", "value"]
 
-            for _ in range(2 * num_layers):
-                past.append(torch.rand(cross_attention_past_shape, dtype=float_type, device=device))
+            for attn in attn_type:
+                for layer in range(num_layers):
+                    for m in matrix:
+                        load_str = "encdecinit/present_{}_{}_{}.npy".format(m, attn, layer)
+                        past.append(torch.from_numpy(np.load(load_str)).to(device))
+
         else:
             past = None
 
@@ -414,6 +398,8 @@ class T5DecoderHelper:
 
             ort_outputs = T5DecoderHelper.onnxruntime_inference(ort_session, inputs)
 
+            if isinstance(model, T5Decoder):
+                np.save("torch_logits.npy", torch_outputs[0].cpu().numpy())
             max_diff = numpy.amax(numpy.abs(torch_outputs[0].cpu().numpy() - ort_outputs[0]))
             max_diff_all = max_diff
             logger.debug(f"logits max_diff={max_diff}")
