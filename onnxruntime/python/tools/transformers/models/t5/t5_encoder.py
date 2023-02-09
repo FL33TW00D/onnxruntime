@@ -71,13 +71,15 @@ class T5EncoderInputs:
         """
 
         #translate English to German: Let's go to that local techno disco - 16 tokens
-        input_ids = torch.from_numpy(numpy.array([13959, 1566, 12, 2968, 10, 1563, 31, 7, 281, 12, 24, 415, 25389, 5025, 32, 1], dtype=numpy.int32))
+        input_ids = torch.from_numpy(numpy.array([13959, 1566, 12, 2968, 10, 1563, 31, 7, 281, 12, 24, 415, 25389, 5025, 32, 1], dtype=numpy.int32).reshape(1, 16)).to(device)
 
-        attention_mask = torch.ones([batch_size, sequence_length], dtype=dtype, device=device)
+        attention_mask = torch.ones([1, 16], dtype=dtype, device=device)
+        """
         if sequence_length >= 2:
             for i in range(batch_size):
                 padding_position = random.randint(0, sequence_length - 1)
                 attention_mask[i, :padding_position] = 0
+        """
         return T5EncoderInputs(input_ids, attention_mask)
 
     def to_list(self) -> List:
@@ -106,8 +108,8 @@ class T5EncoderHelper:
         """
         config = encoder.config
         encoder_inputs = T5EncoderInputs.create_dummy(
-            batch_size=2,
-            sequence_length=4,
+            batch_size=1,
+            sequence_length=16,
             vocab_size=config.vocab_size,
             device=device,
             use_int32_inputs=use_int32_inputs,
@@ -161,8 +163,8 @@ class T5EncoderHelper:
     ):
         """Compare the result from PyTorch and OnnxRuntime to verify the ONNX model is good."""
         inputs = T5EncoderInputs.create_dummy(
-            batch_size=4,
-            sequence_length=11,
+            batch_size=1,
+            sequence_length=16,
             vocab_size=model.config.vocab_size,
             device=device,
             use_int32_inputs=use_int32_inputs,

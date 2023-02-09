@@ -79,6 +79,7 @@ class T5EncoderDecoderInitInputs:
             device,
             use_int32_inputs=use_int32_inputs,
         )
+        print("Encoder inputs: {}".format(encoder_inputs.to_list()))
         decoder_input_ids = None
         if use_decoder_input_ids:
             dtype = torch.int32 if use_int32_inputs else torch.int64
@@ -117,8 +118,8 @@ class T5EncoderDecoderInitHelper:
 
         inputs = T5EncoderDecoderInitInputs.create_dummy(
             model.config,
-            batch_size=2,
-            encode_sequence_length=3,
+            batch_size=1,
+            encode_sequence_length=16,
             use_decoder_input_ids=use_decoder_input_ids,
             device=device,
             use_int32_inputs=use_int32_inputs,
@@ -273,30 +274,30 @@ class T5EncoderDecoderInitHelper:
             torch_outputs = model(*input_list)
 
             assert torch_outputs[0].cpu().numpy().shape == ort_outputs[0].shape
-            numpy.save("logits.npy", ort_outputs[0])
+            numpy.save("ground_truth/encdecinit/logits.npy", ort_outputs[0])
             max_diff = numpy.amax(numpy.abs(torch_outputs[0].cpu().numpy() - ort_outputs[0]))
             logger.debug(f"logits max_diff={max_diff}")
             max_diff_all = max_diff
 
             assert torch_outputs[1].cpu().numpy().shape == ort_outputs[1].shape
-            numpy.save("encoder_hidden_states.npy", ort_outputs[1])
+            numpy.save("ground_truth/encdecinit/encoder_hidden_states.npy", ort_outputs[1])
             max_diff = numpy.amax(numpy.abs(torch_outputs[1].cpu().numpy() - ort_outputs[1]))
             logger.debug(f"encoder_hidden_states max_diff={max_diff}")
             max_diff_all = max(max_diff_all, max_diff)
 
             for i in range(2 * model.config.num_layers):
                 if i % 2 == 0:
-                    numpy.save("present_key_self_{}.npy".format(i), ort_outputs[2 + i])
+                    numpy.save("ground_truth/encdecinit/present_key_self_{}.npy".format(i // 2), ort_outputs[2 + i])
                 else:
-                    numpy.save("present_value_self_{}.npy".format(i), ort_outputs[2 + i])
+                    numpy.save("ground_truth/encdecinit/present_value_self_{}.npy".format(i // 2), ort_outputs[2 + i])
                 max_diff = numpy.amax(numpy.abs(torch_outputs[2][i].cpu().numpy() - ort_outputs[2 + i]))
                 logger.debug(f"self attention past state {i} max_diff={max_diff}")
 
             for i in range(2 * model.config.num_layers):
                 if i % 2 == 0:
-                    numpy.save("ground_truth/encdecinit/present_key_cross_{}.npy".format(i), ort_outputs[2 + 2 * model.config.num_layers + i])
+                    numpy.save("ground_truth/encdecinit/present_key_cross_{}.npy".format(i // 2), ort_outputs[2 + 2 * model.config.num_layers + i])
                 else:
-                    numpy.save("ground_truth/encdecinit/present_value_cross_{}.npy".format(i), ort_outputs[2 + 2 * model.config.num_layers + i])
+                    numpy.save("ground_truth/encdecinit/present_value_cross_{}.npy".format(i // 2), ort_outputs[2 + 2 * model.config.num_layers + i])
                 max_diff = numpy.amax(
                     numpy.abs(torch_outputs[3][i].cpu().numpy() - ort_outputs[2 + 2 * model.config.num_layers + i])
                 )
