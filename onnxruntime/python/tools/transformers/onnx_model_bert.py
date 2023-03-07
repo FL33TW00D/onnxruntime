@@ -48,7 +48,7 @@ class BertOnnxModel(OnnxModel):
             num_heads (int, optional): number of attention heads. Defaults to 0 (detect the parameter automatically).
             hidden_size (int, optional): hidden dimension. Defaults to 0 (detect the parameter automatically).
         """
-        assert (num_heads == 0 and hidden_size == 0) or (num_heads > 0 and hidden_size % num_heads == 0)
+        #assert (num_heads == 0 and hidden_size == 0) or (num_heads > 0 and hidden_size % num_heads == 0)
 
         super().__init__(model)
         self.num_heads = num_heads
@@ -109,6 +109,10 @@ class BertOnnxModel(OnnxModel):
 
         fusion = FusionLayerNormalizationTF(self)
         fusion.apply()
+
+        # Only relevant for T5
+        #fusion = FusionRMSNorm(self)
+        #fusion.apply()
 
         # Only relevant in models with Q-DQ nodes
         fusion = FusionQOrderedLayerNormalization(self)
@@ -386,14 +390,9 @@ class BertOnnxModel(OnnxModel):
         if (options is None) or options.enable_skip_layer_norm:
             self.fuse_skip_layer_norm()
 
-        if options is not None:
-            self.attention_mask.set_mask_format(options.attention_mask_format)
-            if options.use_multi_head_attention and not isinstance(self.attention_fusion, FusionBartAttention):
-                self.attention_fusion = FusionAttention(
-                    self, self.hidden_size, self.num_heads, self.attention_mask, options.use_multi_head_attention
-                )
-
         if (options is None) or options.enable_attention:
+            if options is not None:
+                self.attention_mask.set_mask_format(options.attention_mask_format)
             self.fuse_attention()
 
         # Perform the MatMul fusion after the Attention fusion as we do not
@@ -444,7 +443,6 @@ class BertOnnxModel(OnnxModel):
         ops = [
             "EmbedLayerNormalization",
             "Attention",
-            "MultiHeadAttention",
             "Gelu",
             "FastGelu",
             "BiasGelu",
@@ -466,7 +464,7 @@ class BertOnnxModel(OnnxModel):
         """
         op_count = self.get_fused_operator_statistics()
         embed = op_count["EmbedLayerNormalization"]
-        attention = op_count["Attention"] + op_count["MultiHeadAttention"] + op_count["QOrderedAttention"]
+        attention = op_count["Attention"] + op_count["QOrderedAttention"]
         gelu = op_count["Gelu"] + op_count["BiasGelu"] + op_count["FastGelu"]
         layer_norm = op_count["LayerNormalization"] + op_count["SkipLayerNormalization"]
         is_perfect = (embed > 0) and (attention > 0) and (attention == gelu) and (layer_norm >= 2 * attention)

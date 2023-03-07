@@ -199,7 +199,7 @@ class T5EncoderDecoderInitHelper:
                 input_names=input_names,
                 output_names=output_names,
                 dynamic_axes=dynamic_axes,
-                opset_version=12,
+                opset_version=17,
                 do_constant_folding=True,
                 use_external_data_format=use_external_data_format,
                 verbose=verbose,
