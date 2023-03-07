@@ -125,7 +125,7 @@ class T5EncoderHelper:
                     "attention_mask": {0: "batch_size", 1: "sequence_length"},
                     "hidden_states": {0: "batch_size", 1: "sequence_length"},
                 },
-                opset_version=17,
+                opset_version=16,
                 do_constant_folding=True,
                 use_external_data_format=use_external_data_format,
                 verbose=verbose,

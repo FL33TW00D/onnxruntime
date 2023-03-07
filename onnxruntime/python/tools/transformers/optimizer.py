@@ -263,8 +263,10 @@ def optimize_model(
                 "MatmulTransposeFusion",
                 "GemmActivationFusion",
                 "BiasSoftmaxFusion",
+                "LayerNormFusion",
             ]
         )
+        disabled_optimizers += ["LayerNormFusion", "SimplifiedLayerNormFusion"] 
         temp_model_path = optimize_by_onnxruntime(
             input,
             use_gpu=use_gpu,

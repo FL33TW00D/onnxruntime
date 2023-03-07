@@ -24,7 +24,7 @@ class FusionOptions:
 
     def __init__(self, model_type):
         self.enable_gelu = True
-        self.enable_layer_norm = True
+        self.enable_layer_norm = False 
         self.enable_attention = True
 
         # Use MultiHeadAttention instead of Attention operator. The difference:
@@ -33,9 +33,9 @@ class FusionOptions:
         # (2) Attention could only handle self attention; MultiHeadAttention could handle both self and cross attention.
         self.use_multi_head_attention = False
 
-        self.enable_skip_layer_norm = True
-        self.enable_embed_layer_norm = True
-        self.enable_bias_skip_layer_norm = True
+        self.enable_skip_layer_norm = False 
+        self.enable_embed_layer_norm = False
+        self.enable_bias_skip_layer_norm = False 
         self.enable_bias_gelu = True
         self.enable_gelu_approximation = False
         self.enable_qordered_matmul = True
