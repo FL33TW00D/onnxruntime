@@ -66,8 +66,7 @@ class T5Helper:
         cache_dir: str,
         device: torch.device,
         merge_encoder_and_decoder_init: bool = True,
-        model_type: str = "t5",
-        state_dict_path: str = "",
+        model_type: str = "flan-t5",
     ) -> Dict[str, torch.nn.Module]:
         """Load model given a pretrained name or path, then build models for ONNX conversion.
 
@@ -80,7 +79,7 @@ class T5Helper:
         Returns:
             Dict[str, torch.nn.Module]: mapping from name to modules for ONNX conversion.
         """
-        if model_type == "t5":
+        if model_type == "t5" or model_type == "flan-t5":
             model = T5ForConditionalGeneration.from_pretrained(model_name_or_path, cache_dir=cache_dir)
         elif model_type == "mt5":
             model = MT5ForConditionalGeneration.from_pretrained(model_name_or_path, cache_dir=cache_dir)
@@ -258,7 +257,7 @@ class T5Helper:
             else:
                 m.convert_model_float32_to_float16(cast_input_output=False)
 
-        m.save_model_to_file(optimized_model_path, use_external_data_format, all_tensors_to_one_file=True)
+        m.save_model_to_file(optimized_model_path, use_external_data_format, all_tensors_to_one_file=False)
 
     @staticmethod
     def verify_onnx(

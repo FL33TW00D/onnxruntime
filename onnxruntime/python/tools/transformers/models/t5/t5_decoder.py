@@ -374,12 +374,12 @@ class T5DecoderHelper:
         ort_session: InferenceSession,
         device: torch.device,
         use_int32_inputs: bool,
-        max_cases: int = 4,
+        max_cases: int = 5,
     ):
         """Compare the result from PyTorch and OnnxRuntime to verify the ONNX model is good."""
         float16: bool = TypeHelper.get_input_type(ort_session, "past_key_self_0") == "tensor(float16)"
 
-        test_cases = [(4, 11, 3), (1, 2, 5), (3, 1, 1), (8, 5, 2)]
+        test_cases = [(4, 11, 3), (1, 2, 5), (3, 1, 1), (8, 5, 2), (1, 16, 1)]
         test_cases_max_diff = []
         for (
             batch_size,
@@ -389,15 +389,35 @@ class T5DecoderHelper:
             if isinstance(model, T5DecoderInit):
                 past_decode_sequence_length = 0  # noqa: PLW2901
 
-            inputs = T5DecoderInputs.create_dummy(
-                model.config,
-                batch_size,
-                encode_sequence_length,
-                past_decode_sequence_length,
-                device=device,
-                float16=float16,
-                use_int32_inputs=use_int32_inputs,
-            )
+            if batch_size == 1 and past_decode_sequence_length == 1 and encode_sequence_length == 16:
+                print("EXPORTING DECODER")
+                base_path = "/Users/fleetwood/Code/rumble/resources/npy/flan_t5/base/encdec/ground/"
+                past = [] 
+
+                attn_type = ["self", "cross"]
+                matrix = ["key", "value"]
+
+                for attn in attn_type:
+                    for layer in range(12):
+                        for m in matrix:
+                            load_str = base_path + "present_{}_{}_{}.npy".format(m, attn, layer)
+                            past.append(torch.from_numpy(numpy.load(load_str)).to(device))
+                
+                encoder_attention_mask = torch.ones(1, 16, dtype=torch.int32).to(device)
+                encoder_hidden_states = torch.from_numpy(numpy.load(base_path + "encoder_hidden_states.npy")).to(device)
+                decoder_input_ids = torch.from_numpy(numpy.array([1185], dtype=numpy.int32)).reshape(1,1).to(device)
+
+                inputs = T5DecoderInputs(decoder_input_ids, encoder_attention_mask, encoder_hidden_states, past)
+            else:
+                inputs = T5DecoderInputs.create_dummy(
+                    model.config,
+                    batch_size,
+                    encode_sequence_length,
+                    past_decode_sequence_length,
+                    device=device,
+                    float16=float16,
+                    use_int32_inputs=use_int32_inputs,
+                )
 
             # We use fp32 PyTroch model as baseline even when ONNX model is fp16
             input_list = inputs.to_fp32().to_list()
@@ -408,11 +428,16 @@ class T5DecoderHelper:
 
             ort_outputs = T5DecoderHelper.onnxruntime_inference(ort_session, inputs)
 
+            numpy.save("logits.npy", ort_outputs[0])
             max_diff = numpy.amax(numpy.abs(torch_outputs[0].cpu().numpy() - ort_outputs[0]))
             max_diff_all = max_diff
             logger.debug(f"logits max_diff={max_diff}")
 
             for i in range(2 * model.config.num_layers):
+                if i % 2 == 0:
+                    numpy.save("present_key_self_{}.npy".format(i // 2), ort_outputs[1 + i])
+                else:
+                    numpy.save("present_value_self_{}.npy".format(i // 2), ort_outputs[1 + i])
                 max_diff = numpy.amax(numpy.abs(torch_outputs[1][i].cpu().numpy() - ort_outputs[1 + i]))
                 logger.debug(f"self attention past state {i} max_diff={max_diff}")
                 max_diff_all = max(max_diff_all, max_diff)

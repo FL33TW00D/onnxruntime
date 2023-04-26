@@ -36,7 +36,7 @@ def parse_arguments():
         "--model_type",
         required=False,
         type=str,
-        default="t5",
+        default="flan-t5",
         choices=["flan-t5", "t5", "mt5"],
         help="Model type: either t5 (default), flan-t5 or mt5",
     )
@@ -120,6 +120,15 @@ def parse_arguments():
     parser.set_defaults(separate_encoder_and_decoder_init=False)
 
     parser.add_argument(
+        "-d",
+        "--decoder_only",
+        required=False,
+        action="store_true",
+        help="Export only the decoder.",
+    )
+    parser.set_defaults(separate_encoder_and_decoder_init=False)
+
+    parser.add_argument(
         "--use_int64_inputs",
         required=False,
         action="store_true",
@@ -154,7 +163,7 @@ def export_onnx_models(
     disable_auto_mixed_precision: bool = False,
     use_int32_inputs: bool = True,
     model_type: str = "t5",
-    state_dict_path: str = "",
+    decoder_only: bool = False,
 ):
     device = torch.device("cuda:0" if use_gpu else "cpu")
 
@@ -167,6 +176,10 @@ def export_onnx_models(
         logger.info("Try use_external_data_format when model size > 2GB")
 
     output_paths = []
+    
+    if decoder_only:
+        models = {"decoder": models["decoder"]}
+
     for name, model in models.items():
         model.to(device)
         filename_suffix = "_" + name
@@ -271,6 +284,7 @@ def main():
         args.disable_auto_mixed_precision,
         not args.use_int64_inputs,
         args.model_type,
+        args.decoder_only,
     )
 
     logger.info(f"Done! Outputs: {output_paths}")

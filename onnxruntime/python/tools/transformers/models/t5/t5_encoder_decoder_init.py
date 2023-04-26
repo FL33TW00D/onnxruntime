@@ -247,45 +247,69 @@ class T5EncoderDecoderInitHelper:
         ort_session: InferenceSession,
         device: torch.device,
         use_int32_inputs: bool,
-        max_cases: int = 4,
+        max_cases: int = 5,
     ):
         """Compare the result from PyTorch and OnnxRuntime to verify the ONNX model is good."""
         ort_inputs = ort_session.get_inputs()
         use_decoder_input_ids = len(ort_inputs) == 3
 
-        test_cases = [(4, 11), (1, 2), (3, 1), (8, 5)]
+        #test_cases = [(1, 16)]
+        test_cases = [(3, 16)]
         test_cases_max_diff = []
-        for batch_size, encode_sequence_length in test_cases[:max_cases]:
-            inputs = T5EncoderDecoderInitInputs.create_dummy(
-                model.config,
-                batch_size,
-                encode_sequence_length,
-                use_decoder_input_ids=use_decoder_input_ids,
-                device=device,
-                use_int32_inputs=use_int32_inputs,
-            )
+        for (batch_size, encode_sequence_length) in test_cases[:max_cases]:
+            inputs = None
+            if batch_size == 1 and encode_sequence_length == 16:
+                #translate English to German: Let's go to that local techno disco - 16 tokens 
+                input_ids = torch.tensor([[13959, 1566, 12, 2968, 10, 1563, 31, 7, 281, 12, 24, 415, 25389, 5025, 32, 1]], device=device, dtype=torch.int32)
+                attention_mask = torch.ones(input_ids.shape, device=device, dtype=torch.int32)
+                decoder_input_ids = torch.zeros((1, 1), device=device, dtype=torch.int32)
+                inputs = T5EncoderDecoderInitInputs(input_ids, attention_mask, decoder_input_ids)
+            else:
+                inputs = T5EncoderDecoderInitInputs.create_dummy(
+                    model.config,
+                    batch_size,
+                    encode_sequence_length,
+                    use_decoder_input_ids=use_decoder_input_ids,
+                    device=device,
+                    use_int32_inputs=use_int32_inputs,
+                )
 
             ort_outputs = T5EncoderDecoderInitHelper.onnxruntime_inference(ort_session, inputs)
 
             # Run inference of PyTorch model
             input_list = inputs.to_list()
             torch_outputs = model(*input_list)
+            print(torch_outputs)
 
             assert torch_outputs[0].cpu().numpy().shape == ort_outputs[0].shape
+            #numpy.save("logits.npy", ort_outputs[0])
             max_diff = numpy.amax(numpy.abs(torch_outputs[0].cpu().numpy() - ort_outputs[0]))
             logger.debug(f"logits max_diff={max_diff}")
             max_diff_all = max_diff
 
             assert torch_outputs[1].cpu().numpy().shape == ort_outputs[1].shape
+            #numpy.save("encoder_hidden_states.npy", ort_outputs[1])
             max_diff = numpy.amax(numpy.abs(torch_outputs[1].cpu().numpy() - ort_outputs[1]))
             logger.debug(f"encoder_hidden_states max_diff={max_diff}")
             max_diff_all = max(max_diff_all, max_diff)
 
             for i in range(2 * model.config.num_layers):
+                if i % 2 == 0:
+                    #numpy.save("present_key_self_{}.npy".format(i // 2), ort_outputs[2 + i])
+                    pass
+                else:
+                    pass
+                    #numpy.save("present_value_self_{}.npy".format(i // 2), ort_outputs[2 + i])
                 max_diff = numpy.amax(numpy.abs(torch_outputs[2][i].cpu().numpy() - ort_outputs[2 + i]))
                 logger.debug(f"self attention past state {i} max_diff={max_diff}")
 
             for i in range(2 * model.config.num_layers):
+                if i % 2 == 0:
+                    pass
+                    #numpy.save("present_key_cross_{}.npy".format(i // 2), ort_outputs[2 + 2 * model.config.num_layers + i])
+                else:
+                    pass
+                    #numpy.save("present_value_cross_{}.npy".format(i // 2), ort_outputs[2 + 2 * model.config.num_layers + i])
                 max_diff = numpy.amax(
                     numpy.abs(torch_outputs[3][i].cpu().numpy() - ort_outputs[2 + 2 * model.config.num_layers + i])
                 )
