@@ -11,7 +11,7 @@ import os
 import sys
 
 import torch
-from t5_helper import PRETRAINED_MT5_MODELS, PRETRAINED_T5_MODELS, PRETRAINED_FLAN_T5_MODELS, T5Helper
+from t5_helper import PRETRAINED_MT5_MODELS, PRETRAINED_T5_MODELS, PRETRAINED_FLAN_T5_MODELS, T5Helper, CUSTOM_FLAN_T5_MODELS
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
 from benchmark_helper import Precision, create_onnxruntime_session, prepare_environment, setup_logger  # noqa: E402
@@ -22,7 +22,7 @@ logger = logging.getLogger("")
 def parse_arguments():
     parser = argparse.ArgumentParser()
 
-    pretrained_models = PRETRAINED_T5_MODELS + PRETRAINED_MT5_MODELS + PRETRAINED_FLAN_T5_MODELS
+    pretrained_models = PRETRAINED_T5_MODELS + PRETRAINED_MT5_MODELS + PRETRAINED_FLAN_T5_MODELS + CUSTOM_FLAN_T5_MODELS
     parser.add_argument(
         "-m",
         "--model_name_or_path",
