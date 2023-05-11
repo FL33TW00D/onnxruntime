@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 PRETRAINED_T5_MODELS = ["t5-small", "t5-base", "t5-large", "t5-3b", "t5-11b"]
 PRETRAINED_MT5_MODELS = ["google/mt5-small", "google/mt5-base", "google/mt5-large", "google/mt5-xl", "google/mt5-xxl"]
 PRETRAINED_FLAN_T5_MODELS = ["google/flan-t5-small", "google/flan-t5-base", "google/flan-t5-large", "google/flan-t5-xl", "google/flan-t5-xxl"]
-CUSTOM_FLAN_T5_MODELS = ["MBZUAI/LaMini-Flan-T5-248M", "MBZUAI/LaMini-Flan-T5-783M"]
+CUSTOM_FLAN_T5_MODELS = ["MBZUAI/LaMini-Flan-T5-248M", "MBZUAI/LaMini-Flan-T5-783M", "declare-lab/flan-alpaca-base"]
 
 class T5Helper:
     @staticmethod
@@ -234,11 +234,9 @@ class T5Helper:
 
         from fusion_options import FusionOptions
 
-        optimization_options = None
-        if not use_gpu:
-            optimization_options = FusionOptions("t5")
-            optimization_options.enable_skip_layer_norm = False
-            optimization_options.enable_layer_norm = False
+        optimization_options = FusionOptions("t5")
+        optimization_options.enable_skip_layer_norm = False
+        optimization_options.enable_layer_norm = False
 
         m = optimize_model(
             onnx_model_path,

@@ -8,6 +8,7 @@ from typing import Dict, Optional, Union
 import numpy as np
 from fusion_attention import AttentionMask, FusionAttention
 from fusion_base import Fusion
+from fusion_skiplayernorm import FusionSkipLayerNormalization
 from fusion_utils import NumpyHelper
 from onnx import NodeProto, TensorProto, helper
 from onnx_model import OnnxModel
@@ -687,7 +688,6 @@ class FusionRelativePositionBiasBlock(Fusion):
 class T5OnnxModel(BertOnnxModel):
     def __init__(self, model, num_heads, hidden_size):
         super().__init__(model, num_heads, hidden_size)
-    """
         self.attention_mask = AttentionMask(self)
         self.attention_fusion = FusionT5Attention(self, self.hidden_size, self.num_heads, self.attention_mask)
         self.layer_norm_fusion = FusionSimplifiedLayerNormalization(self)
@@ -787,4 +787,3 @@ class T5OnnxModel(BertOnnxModel):
         self.remove_extended_mask_decoder()
 
         self.prune_graph()
-    """

@@ -260,13 +260,21 @@ def optimize_model(
             else [
                 "MatMulScaleFusion",
                 "MatMulAddFusion",
-                "MatmulTransposeFusion",
+                "MatMulTransposeFusion",
                 "GemmActivationFusion",
                 "BiasSoftmaxFusion",
                 "LayerNormFusion",
             ]
         )
-        disabled_optimizers += ["LayerNormFusion", "SimplifiedLayerNormFusion"] 
+        disabled_optimizers += [ 
+                "MatMulScaleFusion",
+                "MatMulAddFusion",
+                "MatmulTransposeFusion",
+                "GemmActivationFusion",
+                "BiasSoftmaxFusion",
+                "LayerNormFusion",
+                "SimplifiedLayerNormFusion",
+        ]
         temp_model_path = optimize_by_onnxruntime(
             input,
             use_gpu=use_gpu,
@@ -293,6 +301,7 @@ def optimize_model(
     if only_onnxruntime:
         optimizer = optimizer_class(model, num_heads, hidden_size)
     else:
+        print("Optimizing by fusion logic")
         optimizer = optimize_by_fusion(model, model_type, num_heads, hidden_size, optimization_options)
 
     # Remove the temporary model.

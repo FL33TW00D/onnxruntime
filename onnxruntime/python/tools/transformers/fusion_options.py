@@ -25,7 +25,7 @@ class FusionOptions:
     def __init__(self, model_type):
         self.enable_gelu = True
         self.enable_layer_norm = False 
-        self.enable_attention = True
+        self.enable_attention = False 
 
         # Use MultiHeadAttention instead of Attention operator. The difference:
         # (1) Attention has merged weights for Q/K/V projection, which might be faster in some cases since 3 MatMul is
@@ -36,11 +36,11 @@ class FusionOptions:
         self.enable_skip_layer_norm = False 
         self.enable_embed_layer_norm = False
         self.enable_bias_skip_layer_norm = False 
-        self.enable_bias_gelu = True
+        self.enable_bias_gelu = False 
         self.enable_gelu_approximation = False
-        self.enable_qordered_matmul = True
+        self.enable_qordered_matmul = False 
 
-        self.enable_shape_inference = True
+        self.enable_shape_inference = False 
         self.enable_gemm_fast_gelu = False
 
         # Set default to sequence length for BERT model to use fused attention to speed up.
