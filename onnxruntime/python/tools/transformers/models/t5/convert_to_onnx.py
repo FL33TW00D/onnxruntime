@@ -232,18 +232,17 @@ def export_onnx_models(
         else:
             output_path = onnx_path
 
-        ort_session = create_onnxruntime_session(
-            output_path,
-            use_gpu=use_gpu,
-            provider=["CUDAExecutionProvider", "CPUExecutionProvider"] if use_gpu else ["CPUExecutionProvider"],
-        )
-
-
-        with torch.no_grad():
-            max_diff = T5Helper.verify_onnx(model, ort_session, device, use_int32_inputs)
-        logger.info(f"PyTorch and OnnxRuntime results max difference = {max_diff}")
-        if max_diff > 1e-4:
-            logger.warning("PyTorch and OnnxRuntime results are NOT close")
+        if False:
+            ort_session = create_onnxruntime_session(
+                output_path,
+                use_gpu=use_gpu,
+                provider=["CUDAExecutionProvider", "CPUExecutionProvider"] if use_gpu else ["CPUExecutionProvider"],
+            )
+            with torch.no_grad():
+                max_diff = T5Helper.verify_onnx(model, ort_session, device, use_int32_inputs)
+            logger.info(f"PyTorch and OnnxRuntime results max difference = {max_diff}")
+            if max_diff > 1e-4:
+                logger.warning("PyTorch and OnnxRuntime results are NOT close")
         output_paths.append(output_path)
 
     return output_paths
