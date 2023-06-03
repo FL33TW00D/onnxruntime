@@ -129,7 +129,7 @@ def parse_arguments():
     parser.set_defaults(decoder_only=False)
 
     parser.add_argument(
-        "-ed"
+        "-ed",
         "--encoder_decoder_only",
         required=False,
         action="store_true",
