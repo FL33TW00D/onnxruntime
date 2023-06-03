@@ -126,7 +126,16 @@ def parse_arguments():
         action="store_true",
         help="Export only the decoder.",
     )
-    parser.set_defaults(separate_encoder_and_decoder_init=False)
+    parser.set_defaults(decoder_only=False)
+
+    parser.add_argument(
+        "-ed"
+        "--encoder_decoder_only",
+        required=False,
+        action="store_true",
+        help="Export only the encoder-decoder_init.",
+    )
+    parser.set_defaults(encoder_decoder_only=False)
 
     parser.add_argument(
         "--use_int64_inputs",
@@ -164,6 +173,7 @@ def export_onnx_models(
     use_int32_inputs: bool = True,
     model_type: str = "t5",
     decoder_only: bool = False,
+    encoder_decoder_only: bool = False,
 ):
     device = torch.device("cuda:0" if use_gpu else "cpu")
 
@@ -179,6 +189,9 @@ def export_onnx_models(
     
     if decoder_only:
         models = {"decoder": models["decoder"]}
+
+    if encoder_decoder_only:
+        models = {"encoder_decoder_init": models["encoder_decoder_init"]}
 
     for name, model in models.items():
         model.to(device)
@@ -284,6 +297,7 @@ def main():
         not args.use_int64_inputs,
         args.model_type,
         args.decoder_only,
+        args.encoder_decoder_only,
     )
 
     logger.info(f"Done! Outputs: {output_paths}")
