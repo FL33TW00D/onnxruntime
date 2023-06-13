@@ -11,10 +11,21 @@ import os
 import sys
 
 import torch
-from t5_helper import PRETRAINED_MT5_MODELS, PRETRAINED_T5_MODELS, PRETRAINED_FLAN_T5_MODELS, T5Helper, CUSTOM_FLAN_T5_MODELS
+from t5_helper import (
+    PRETRAINED_MT5_MODELS,
+    PRETRAINED_T5_MODELS,
+    PRETRAINED_FLAN_T5_MODELS,
+    T5Helper,
+    CUSTOM_FLAN_T5_MODELS,
+)
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
-from benchmark_helper import Precision, create_onnxruntime_session, prepare_environment, setup_logger  # noqa: E402
+from benchmark_helper import (
+    Precision,
+    create_onnxruntime_session,
+    prepare_environment,
+    setup_logger,
+)  # noqa: E402
 
 logger = logging.getLogger("")
 
@@ -22,14 +33,20 @@ logger = logging.getLogger("")
 def parse_arguments():
     parser = argparse.ArgumentParser()
 
-    pretrained_models = PRETRAINED_T5_MODELS + PRETRAINED_MT5_MODELS + PRETRAINED_FLAN_T5_MODELS + CUSTOM_FLAN_T5_MODELS
+    pretrained_models = (
+        PRETRAINED_T5_MODELS
+        + PRETRAINED_MT5_MODELS
+        + PRETRAINED_FLAN_T5_MODELS
+        + CUSTOM_FLAN_T5_MODELS
+    )
     parser.add_argument(
         "-m",
         "--model_name_or_path",
         required=False,
         default=PRETRAINED_T5_MODELS[0],
         type=str,
-        help="Model path, or pretrained model name in the list: " + ", ".join(pretrained_models),
+        help="Model path, or pretrained model name in the list: "
+        + ", ".join(pretrained_models),
     )
 
     parser.add_argument(
@@ -66,7 +83,9 @@ def parse_arguments():
     )
     parser.set_defaults(optimize_onnx=False)
 
-    parser.add_argument("--use_gpu", required=False, action="store_true", help="use GPU for inference")
+    parser.add_argument(
+        "--use_gpu", required=False, action="store_true", help="use GPU for inference"
+    )
     parser.set_defaults(use_gpu=False)
 
     parser.add_argument(
@@ -82,7 +101,9 @@ def parse_arguments():
     parser.add_argument("--verbose", required=False, action="store_true")
     parser.set_defaults(verbose=False)
 
-    parser.add_argument("-e", "--use_external_data_format", required=False, action="store_true")
+    parser.add_argument(
+        "-e", "--use_external_data_format", required=False, action="store_true"
+    )
     parser.set_defaults(use_external_data_format=False)
 
     parser.add_argument(
@@ -178,7 +199,11 @@ def export_onnx_models(
     device = torch.device("cuda:0" if use_gpu else "cpu")
 
     models = T5Helper.load_model(
-        model_name_or_path, cache_dir, device, merge_encoder_and_decoder_init, model_type, state_dict_path
+        model_name_or_path,
+        cache_dir,
+        device,
+        merge_encoder_and_decoder_init,
+        model_type,
     )
     config = models["decoder"].config
 
@@ -186,7 +211,7 @@ def export_onnx_models(
         logger.info("Try use_external_data_format when model size > 2GB")
 
     output_paths = []
-    
+
     if decoder_only:
         models = {"decoder": models["decoder"]}
 
@@ -249,10 +274,14 @@ def export_onnx_models(
             ort_session = create_onnxruntime_session(
                 output_path,
                 use_gpu=use_gpu,
-                provider=["CUDAExecutionProvider", "CPUExecutionProvider"] if use_gpu else ["CPUExecutionProvider"],
+                provider=["CUDAExecutionProvider", "CPUExecutionProvider"]
+                if use_gpu
+                else ["CPUExecutionProvider"],
             )
             with torch.no_grad():
-                max_diff = T5Helper.verify_onnx(model, ort_session, device, use_int32_inputs)
+                max_diff = T5Helper.verify_onnx(
+                    model, ort_session, device, use_int32_inputs
+                )
             logger.info(f"PyTorch and OnnxRuntime results max difference = {max_diff}")
             if max_diff > 1e-4:
                 logger.warning("PyTorch and OnnxRuntime results are NOT close")
@@ -269,7 +298,11 @@ def main():
     logger.info(f"Arguments:{args}")
 
     cache_dir = args.cache_dir
-    output_dir = args.output if not args.output.endswith(".onnx") else os.path.dirname(args.output)
+    output_dir = (
+        args.output
+        if not args.output.endswith(".onnx")
+        else os.path.dirname(args.output)
+    )
     prepare_environment(cache_dir, output_dir, args.use_gpu)
 
     if args.precision != Precision.FLOAT32:

@@ -26,9 +26,27 @@ from optimizer import optimize_model  # noqa: E402
 logger = logging.getLogger(__name__)
 
 PRETRAINED_T5_MODELS = ["t5-small", "t5-base", "t5-large", "t5-3b", "t5-11b"]
-PRETRAINED_MT5_MODELS = ["google/mt5-small", "google/mt5-base", "google/mt5-large", "google/mt5-xl", "google/mt5-xxl"]
-PRETRAINED_FLAN_T5_MODELS = ["google/flan-t5-small", "google/flan-t5-base", "google/flan-t5-large", "google/flan-t5-xl", "google/flan-t5-xxl"]
-CUSTOM_FLAN_T5_MODELS = ["MBZUAI/LaMini-Flan-T5-248M", "MBZUAI/LaMini-Flan-T5-783M", "declare-lab/flan-alpaca-base", "grammarly/coedit-large"]
+PRETRAINED_MT5_MODELS = [
+    "google/mt5-small",
+    "google/mt5-base",
+    "google/mt5-large",
+    "google/mt5-xl",
+    "google/mt5-xxl",
+]
+PRETRAINED_FLAN_T5_MODELS = [
+    "google/flan-t5-small",
+    "google/flan-t5-base",
+    "google/flan-t5-large",
+    "google/flan-t5-xl",
+    "google/flan-t5-xxl",
+]
+CUSTOM_FLAN_T5_MODELS = [
+    "MBZUAI/LaMini-Flan-T5-248M",
+    "MBZUAI/LaMini-Flan-T5-783M",
+    "declare-lab/flan-alpaca-base",
+    "grammarly/coedit-large",
+]
+
 
 class T5Helper:
     @staticmethod
@@ -80,9 +98,13 @@ class T5Helper:
             Dict[str, torch.nn.Module]: mapping from name to modules for ONNX conversion.
         """
         if model_type == "t5" or model_type == "flan-t5" or model_type == "custom":
-            model = T5ForConditionalGeneration.from_pretrained(model_name_or_path, cache_dir=cache_dir)
+            model = T5ForConditionalGeneration.from_pretrained(
+                model_name_or_path, cache_dir=cache_dir
+            )
         elif model_type == "mt5":
-            model = MT5ForConditionalGeneration.from_pretrained(model_name_or_path, cache_dir=cache_dir)
+            model = MT5ForConditionalGeneration.from_pretrained(
+                model_name_or_path, cache_dir=cache_dir
+            )
         else:
             raise ValueError("only support mode_type=t5 or mt5")
 
@@ -195,10 +217,14 @@ class T5Helper:
             # when the max difference of value after converting float to float16 is lower than a threshold (1e-6),
             # we can deduce that the weights are stored in float16 precision.
             max_diff = float_to_float16_max_diff(initializer)
-            logger.debug(f"max diff of converting weights in last MatMul node {node.name}: {max_diff}")
+            logger.debug(
+                f"max diff of converting weights in last MatMul node {node.name}: {max_diff}"
+            )
             is_weight_fp16_precision = max_diff < 1e-6
         else:
-            logger.warning(f"Failed to find MatMul node for logits. Found {node.op_type} of node {node.name}")
+            logger.warning(
+                f"Failed to find MatMul node for logits. Found {node.op_type} of node {node.name}"
+            )
 
         keep_io_types = []
         node_block_list = []
@@ -255,7 +281,11 @@ class T5Helper:
             else:
                 m.convert_model_float32_to_float16(cast_input_output=False)
 
-        m.save_model_to_file(optimized_model_path, use_external_data_format, all_tensors_to_one_file=False)
+        m.save_model_to_file(
+            optimized_model_path,
+            use_external_data_format,
+            all_tensors_to_one_file=False,
+        )
 
     @staticmethod
     def verify_onnx(
@@ -266,9 +296,13 @@ class T5Helper:
     ):
         """Compare the result from PyTorch and OnnxRuntime to verify the ONNX model is good."""
         if isinstance(model, T5Encoder):
-            return T5EncoderHelper.verify_onnx(model, ort_session, device, use_int32_inputs)
+            return T5EncoderHelper.verify_onnx(
+                model, ort_session, device, use_int32_inputs
+            )
 
         if isinstance(model, T5EncoderDecoderInit):
-            return T5EncoderDecoderInitHelper.verify_onnx(model, ort_session, device, use_int32_inputs)
+            return T5EncoderDecoderInitHelper.verify_onnx(
+                model, ort_session, device, use_int32_inputs
+            )
 
         return T5DecoderHelper.verify_onnx(model, ort_session, device, use_int32_inputs)
