@@ -685,6 +685,67 @@ class FusionRelativePositionBiasBlock(Fusion):
         self.node_name_to_graph_name[rpb_node.name] = self.this_graph_name
 
 
+class FusionSimplifiedLayerNormalization(Fusion):
+    def __init__(self, model: OnnxModel):
+        super().__init__(model, "SimplifiedLayerNormalization", "Mul")
+
+    def fuse(self, node, input_name_to_nodes: Dict, output_name_to_node: Dict):
+        if node.op_type != "Mul":
+            return
+
+        sim_ln_nodes = self.model.match_parent_path(
+            node,
+            ["Mul", "Div", "Sqrt", "Add", "ReduceMean", "Pow", "Add"],
+            [1, 1, 1, 0, 0, 0, 0],
+        )
+        if sim_ln_nodes is None:
+            sim_ln_nodes = self.model.match_parent_path(
+                node,
+                ["Mul", "Div", "Sqrt", "Add", "ReduceMean", "Pow", "Gather"],
+                [1, 1, 1, 0, 0, 0, 0],
+            )
+            if sim_ln_nodes is None:
+                return
+
+        pow_node = sim_ln_nodes[-2]
+        if self.model.find_constant_input(pow_node, 2.0) != 1:
+            return
+
+        root_input = pow_node.input[0]
+
+        mul_node_1 = sim_ln_nodes[0]
+        if root_input != mul_node_1.input[0]:
+            return
+
+        second_add_node = sim_ln_nodes[3]
+        i, add_weight = self.model.get_constant_input(second_add_node)
+        if add_weight is None or add_weight <= 0 or add_weight > 1.0e-4:
+            logger.warning(f"epsilon value is not expeced: {add_weight}")
+            return
+
+        self.nodes_to_remove.extend(sim_ln_nodes[:-1])
+
+        normalize_node = helper.make_node(
+            "SimplifiedLayerNormalization",
+            inputs=[root_input, node.input[0]],
+            outputs=[node.output[0]],
+            name=self.model.create_node_name("SimplifiedLayerNormalization", name_prefix="LayerNorm"),
+        )
+        normalize_node.attribute.extend([helper.make_attribute("epsilon", float(add_weight))])
+        normalize_node.attribute.extend([helper.make_attribute("axis", int(-1))])
+        normalize_node.attribute.extend([helper.make_attribute("stash_type", int(1))])
+        self.nodes_to_add.append(normalize_node)
+        self.node_name_to_graph_name[normalize_node.name] = self.this_graph_name
+
+
+class FusionSkipSimplifiedLayerNormalization(FusionSkipLayerNormalization):
+    def __init__(self, model: OnnxModel):
+        super().__init__(model, "SkipSimplifiedLayerNormalization", "SimplifiedLayerNormalization")
+
+    def fuse(self, node, input_name_to_nodes, output_name_to_node):
+        super().fuse(node, input_name_to_nodes, output_name_to_node)
+
+
 class T5OnnxModel(BertOnnxModel):
     def __init__(self, model, num_heads, hidden_size):
         super().__init__(model, num_heads, hidden_size)

@@ -85,6 +85,7 @@ class T5Helper:
         device: torch.device,
         merge_encoder_and_decoder_init: bool = True,
         model_type: str = "flan-t5",
+        state_dict_path: str = "",
     ) -> Dict[str, torch.nn.Module]:
         """Load model given a pretrained name or path, then build models for ONNX conversion.
 
