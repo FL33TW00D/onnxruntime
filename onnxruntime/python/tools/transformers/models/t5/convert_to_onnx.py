@@ -29,7 +29,6 @@ from benchmark_helper import (
 
 logger = logging.getLogger("")
 
-
 def parse_arguments():
     parser = argparse.ArgumentParser()
 
