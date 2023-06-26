@@ -133,6 +133,12 @@ def parse_arguments():
         default="",
         help="filepath to load pre-trained model with custom state dictionary (e.g. pytorch_model.bin)",
     )
+    parser.add_argument(
+        "--decoder_only",
+        required=False,
+        action="store_true",
+        help="Only export decoder model",
+    )
 
     args = parser.parse_args()
 
@@ -155,6 +161,7 @@ def export_onnx_models(
     use_int32_inputs: bool = True,
     model_type: str = "t5",
     state_dict_path: str = "",
+    decoder_only: bool = False,
 ):
     device = torch.device("cuda:0" if use_gpu else "cpu")
 
@@ -165,6 +172,9 @@ def export_onnx_models(
 
     if (not use_external_data_format) and (config.num_layers > 24):
         logger.info("Try use_external_data_format when model size > 2GB")
+
+    if decoder_only:
+        models = {"decoder": models["decoder"]}
 
     output_paths = []
     for name, model in models.items():
@@ -272,6 +282,8 @@ def main():
         args.disable_auto_mixed_precision,
         not args.use_int64_inputs,
         args.model_type,
+        args.state_dict_path,
+        args.decoder_only,
     )
 
     logger.info(f"Done! Outputs: {output_paths}")

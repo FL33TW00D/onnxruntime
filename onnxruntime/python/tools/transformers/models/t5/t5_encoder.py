@@ -137,7 +137,7 @@ class T5EncoderHelper:
                     model,
                     onnx_model_path,
                     save_as_external_data=True,
-                    all_tensors_to_one_file=True,
+                    all_tensors_to_one_file=False,
                 )
 
     @staticmethod
