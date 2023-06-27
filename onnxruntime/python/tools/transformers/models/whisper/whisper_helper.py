@@ -238,8 +238,13 @@ class WhisperHelper:
         from fusion_options import FusionOptions
 
         optimization_options = FusionOptions("bart")
-        optimization_options.use_multi_head_attention = True
-        optimization_options.disable_multi_head_attention_bias = provider == "rocm"
+        optimization_options.enable_gelu_approximation = True
+        optimization_options.use_multi_head_attention = False
+        optimization_options.disable_multi_head_attention_bias = True
+        optimization_options.enable_skip_layer_norm = False
+        optimization_options.enable_embed_layer_norm = False
+        optimization_options.enable_bias_skip_layer_norm = False
+        optimization_options.enable_bias_gelu = False
 
         m = optimize_model(
             onnx_model_path,

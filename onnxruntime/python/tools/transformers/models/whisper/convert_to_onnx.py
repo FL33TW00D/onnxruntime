@@ -170,7 +170,7 @@ def parse_arguments(argv=None):
         action="store_true",
         help="Produce beam search model with chained encdecinit and decoder.",
     )
-    parser.set_defaults(chain_model=True)
+    parser.set_defaults(chain_model=False)
 
     parser.add_argument(
         "--beam_output_model",
